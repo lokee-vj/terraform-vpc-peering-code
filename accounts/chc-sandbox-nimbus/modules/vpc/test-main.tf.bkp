@@ -1,0 +1,66 @@
+provider "aws" {
+  region = "us-east-1"
+
+  ## Requester's credentials.
+}
+
+provider "aws" {
+  alias  = "peer"
+  region = "us-east-1"
+
+  ## Accepter's credentials.
+}
+
+data "aws_caller_identity" "peer" {
+  provider = aws.peer
+}
+
+## Requester's side of the connection.
+resource "aws_vpc_peering_connection" "peer" {
+  vpc_id        = var.vpc_id
+  peer_vpc_id   = var.peer_vpc_id
+  peer_owner_id = data.aws_caller_identity.peer.account_id
+  peer_region   = var.peer_region
+  auto_accept   = false
+
+  tags = {
+    Side = "Requester"
+  }
+}
+
+# Accepter's side of the connection.
+resource "aws_vpc_peering_connection_accepter" "peer" {
+  provider                  = aws.peer
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+  auto_accept               = true
+
+  tags = {
+    Side = "Accepter"
+  }
+}
+
+## Add route table entry Requester side.
+data "aws_route_table" "rtuseast1" {
+  subnet_id = var.subnet_east1
+}
+
+
+resource "aws_route" "route" {
+  route_table_id            = data.aws_route_table.rtuseast1.id
+  destination_cidr_block    = "10.45.2.0/24"
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+}
+
+## Add route table entry accepter side.
+data "aws_route_table" "rtuswest2" {
+  provider = aws.peer
+  subnet_id = var.subnet_peer
+}
+
+
+resource "aws_route" "rtuswest2" {
+  provider = aws.peer
+  route_table_id            = data.aws_route_table.rtuswest2.id
+  destination_cidr_block    = "10.45.1.0/24"
+  vpc_peering_connection_id = aws_vpc_peering_connection.peer.id
+}

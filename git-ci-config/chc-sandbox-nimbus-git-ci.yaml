@@ -1,0 +1,77 @@
+variables:
+  account: 783963507307
+  role: Nimbus-Administrator
+
+
+before_script:
+    - echo "Starting before script... caller identity is "
+    - aws sts get-caller-identity
+    - echo "assuming ${role}"
+    - role=(`aws sts assume-role --role-arn "arn:aws:iam::${account}:role/${role}" --role-session-name "GITLAB-SESSION" --query '[Credentials.AccessKeyId,Credentials.SecretAccessKey,Credentials.SessionToken]' --output text`)
+    - unset AWS_SECURITY_TOKEN
+    - export AWS_DEFAULT_REGION="us-east-1"
+    - export AWS_ACCESS_KEY_ID=${role[0]}
+    - export AWS_SECRET_ACCESS_KEY=${role[1]}
+    - export AWS_SESSION_TOKEN=${role[2]}
+    - echo "ending before script... caller identity is "
+    - aws sts get-caller-identity
+    - . ./prepare_env.sh
+    #- cd plugins && unzip terraform\*\.zip && ls -l /builds/cie/cie-iaac/example-terraform-ec2/plugins
+    - export PATH=$PATH:/builds/cie/cie-iaac/example-terraform-ec2/plugins
+    - cd /builds/cie/cie-iaac/example-terraform-ec2/accounts/chc-sandbox-nimbus/
+
+MyTestStage:
+  stage: test
+  #extends: test
+  #image: gitlab.healthcareit.net:8443/cie/ci-cd/gitlab-runner-images/python3:dev
+  only:
+    refs:
+      - vpcpeering
+    changes:
+      - "accounts/chc-sandbox-nimbus/**/*"
+  tags:
+    - python3
+    - dev
+  script:
+    - echo "In myTestStage..."
+    - uname -a
+    - aws --version
+    - aws s3 ls
+    - terraform version
+    - terraform init
+    - terraform plan
+
+
+goDeploy:
+  stage: deploy
+  #extends: deploy
+  #image: gitlab.healthcareit.net:8443/cie/ci-cd/gitlab-runner-images/python3:dev
+  rules:
+   # - changes:
+    #   - "accounts/chc-sandbox-nimbus/**/*"
+    - if: $DEPLOY == "true"
+      when: always
+  tags:
+    - python3
+    - dev
+  script:
+    - echo "In goDeploy"
+    - terraform init -backend=true
+    - terraform apply -auto-approve
+
+deleteResources:
+  stage: destroy
+  #extends: destroy
+  rules:
+    - if: $DESTROY == "true"
+      when: always
+  tags:
+    - python3
+    - dev
+  script:
+    - echo "In deleteResources"
+    - terraform init -backend=true
+    - terraform destroy -auto-approve
+
+
+

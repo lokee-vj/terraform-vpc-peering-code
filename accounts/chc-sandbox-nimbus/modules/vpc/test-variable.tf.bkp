@@ -1,0 +1,32 @@
+variable "owner_id" {
+  type    = string
+  default = "783963507307"
+}
+
+variable "vpc_id" {
+  type    = string
+  default = "vpc-0a1e4b26c4b39829d"
+}
+
+variable "peer_vpc_id" {
+  type    = string
+  default = "vpc-0997fa60fdb56a618"
+}
+
+variable "peer_region" {
+  default = "us-east-1"
+}
+
+variable "subnet_east1" {
+  default = "subnet-03518d6b927929d05"
+}
+
+variable "subnet_peer" {
+  default = "subnet-08c39f04821ba8e9d"
+}
+
+
+
+
+
+
